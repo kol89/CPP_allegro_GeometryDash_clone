@@ -17,6 +17,7 @@ int lvl = 1;
 const double g = 900;
 std::string mod;
 bool on_ground = false;
+bool press = false;
 
 struct colour{
     int r; // red channel
@@ -106,7 +107,18 @@ class player: public rectangle{
         bool flip_gr;
         rectangle collision_box;
         rectangle hit_box;
-        player(double _x,double _y,char _mode){
+		void chsp(int s) {
+			switch (s) {
+			case 0:
+				vx = 25;
+			case 1:
+				vx = 200;
+			case 2:
+				vx = 300;
+			}
+			sync();
+		}
+        player(double _x,double _y,char _mode, int _speed){
             mode=_mode;
             flip_gr = false;
             x= _x;
@@ -115,6 +127,7 @@ class player: public rectangle{
             StartY = _y;
             vx = 0;
             vy = 0;
+            chsp(_speed);
             sx = 50;
             sy = 50;
             ax = 0;
@@ -137,20 +150,10 @@ class player: public rectangle{
             if (flip_gr){vy -= ay/60;}else{vy += ay/60;}
             sync();
         }
-        void chsp(int s){
-            switch(s){
-                case 0:
-                    vx = 25;
-                case 1:
-                    vx = 200;
-                case 2:
-                    vx = 300;
-            }
-            sync();
-        }
+        
 
 };
-player p = player(0,300, 'c');
+player p = player(0, 300, 'c', 1);
 
 rectangle ground(0,300,0,0,700,60,0,0,colour(255,165,0,0));
 class block: public rectangle{
@@ -185,6 +188,44 @@ class spike: public rectangle{
             StartY = y;
             c = colour(255,0,0,0);
         }
+};
+
+class portal : public rectangle {
+public:
+	char mode;
+	portal(double _x, double _y, char _mode) {
+		ax = 0;
+		ay = 0;
+		vx = 0;
+		vy = 0;
+		sx = 50;
+		sy = 150;
+		mode = _mode;
+		x = 50 + _x * 50;
+		y = ground.y - _y * 50;
+		StartX = x;
+		StartY = y;
+		c = colour(0, 0, 255, 0);
+	}
+};
+
+class speed_portal : public rectangle {
+public:
+	char spd;
+	speed_portal(double _x, double _y, char _spd) {
+		ax = 0;
+		ay = 0;
+		vx = 0;
+		vy = 0;
+		sx = 50;
+		sy = 150;
+		spd = _spd;
+		x = 50 + _x * 50;
+		y = ground.y - _y * 50;
+		StartX = x;
+		StartY = y;
+		c = colour(0, 0, 255, 0);
+	}
 };
 
 class button: public rectangle{
@@ -223,11 +264,19 @@ class level{
     public:
     std::vector<spike> danger;
     std::vector<block> colidable;
+	std::vector<portal> portals;
+	std::vector<speed_portal> speed;
+    char mode;
+    int sp;
     double end;
-    level(std::vector<spike> _danger, std::vector<block> _colidable, double _end){
+    level(std::vector<spike> _danger, std::vector<block> _colidable, std::vector<portal> _portals, std::vector<speed_portal> _speed, double _end, char _mode, int _sp){
         danger = _danger;
         colidable = _colidable;
+        portals = _portals;
+        speed = _speed;
         end = _end;
+        mode = _mode;
+        sp = _sp;
     }
     void render(){
         if (danger.empty() == 0){
@@ -240,8 +289,18 @@ class level{
                 colidable[i].rend();
             }
         }
+		if (portals.empty() == 0) {
+			for (int i = 0; i < portals.size(); i++) {
+				portals[i].rend();
+			}
+		}
+		if (speed.empty() == 0) {
+			for (int i = 0; i < speed.size(); i++) {
+                speed[i].rend();
+			}
+		}
     }
-    bool collision(player p){
+    bool collision(){
         if (danger.empty() == 0){
             for (int i = 0; i<danger.size(); i++){
                         if (p.hit_box.chkcol(danger[i])){
@@ -272,6 +331,23 @@ class level{
                 }
             }
         }
+
+		if (portals.empty() == 0) {
+			for (int i = 0; i < portals.size(); i++) {
+				if (p.hit_box.chkcol(portals[i])) {
+                    p.mode = portals[i].mode;
+				}
+			}
+		}
+	    
+        if (portals.empty() == 0) {
+			for (int i = 0; i < speed.size(); i++) {
+				if (p.hit_box.chkcol(speed[i])) {
+					p.vx = speed[i].spd;
+				}
+			}
+        }
+
         return false;
     }
     void move(){
@@ -287,6 +363,16 @@ class level{
                     colidable[i].x = colidable[i].x - p.vx/60;
                 }
             }
+			if (portals.empty() == 0) {
+				for (int i = 0; i < portals.size(); i++) {
+                    portals[i].x = portals[i].x - p.vx / 60;
+				}
+			}
+			if (speed.empty() == 0) {
+				for (int i = 0; i < speed.size(); i++) {
+                    speed[i].x = speed[i].x - p.vx / 60;
+				}
+			}
         }   
     }
 };
@@ -297,6 +383,19 @@ class level{
 
 std::vector<spike> danger;
 std::vector<block> colidable;
+std::vector<portal> portals;
+/* 
+    all modes:
+    c - cube    DONE
+    s - ship    DONE
+    b - saw     DONE
+    u - UFO     WIP
+    w - wave    WIP
+    r - robot   WIP
+    p - spider  WIP
+    g - swing   WIP
+*/
+std::vector<speed_portal> speed;
 level level1(
     danger = {
     spike(10, 1),
@@ -341,7 +440,11 @@ level level1(
     block (65, 2),
     block (66, 2),
     }, 
-    1000
+	portals = {},
+	speed = {},
+    1000,
+    'c',
+    1
 );
 level level2(
     danger = {
@@ -351,8 +454,12 @@ level level2(
     }, 
     colidable = {
 
-    }, 
-    1000
+    },
+    portals = {},
+    speed = {},
+    1000,
+	'c',
+	1
 );
 
 void reset_all(){
@@ -362,9 +469,13 @@ void reset_all(){
         case 1:
             for (int i = 0; i<level1.danger.size(); i++){level1.danger[i].reset();}
             for (int i = 0; i<level1.colidable.size(); i++){level1.colidable[i].reset();}
+            p.chsp(level1.sp);
+            p.mode = level1.mode;
         case 2:
             for (int i = 0; i<level2.danger.size(); i++){level2.danger[i].reset();}
             for (int i = 0; i<level2.colidable.size(); i++){level2.colidable[i].reset();}
+			p.chsp(level2.sp);
+			p.mode = level2.mode;
     }
     attempts++;
 }
@@ -374,7 +485,7 @@ button l2 (350,120,170,100, "level 2", colour(255,255,255,0));
 
 
 
-//~----------------------Main programm------------------------
+//~----------------------Main program------------------------
 class GameEngine:public Engine{
 
     //*---FPS---+
@@ -407,22 +518,74 @@ class GameEngine:public Engine{
                 return;
             }
             on_ground = false;
-            p.chsp(1);
             p.ay = g;
 
-            if (p.mode == 's'){
-                if (al_key_down(&state, ALLEGRO_KEY_UP) || al_key_down(&state, ALLEGRO_KEY_SPACE)) {
-                    p.ay = -700;
-                }
+			if (p.hit_box.y + p.hit_box.sy >= ground.y) {
+				p.y = ground.y - p.hit_box.sy;
+				p.vy = 0;
+				on_ground = true;
+			}
+            if (p.vy < -1000){
+                reset_all();
             }
+			switch (lvl) {
+			case 1:
+                p.mode = level1.mode;
+                p.chsp(level1.sp);
+				level1.move();
+				if (level1.collision()) {
+					reset_all();
+				}
+				break;
+
+			case 2:
+				p.mode = level2.mode;
+                p.chsp(level2.sp);
+				level2.move();
+				if (level2.collision()) {
+					reset_all();
+				}
+				break;
+			}
+
+            if (al_key_down(&state, ALLEGRO_KEY_UP) || al_key_down(&state, ALLEGRO_KEY_SPACE)) {
+                switch (p.mode) {
+                case 's':
+                    p.ay = -700;
+                    break;
+                case 'c':
+                    if (on_ground) { p.vy = -410; }
+                    break;
+                case 'b':
+                    if (on_ground && !press) { p.flip_gr = !p.flip_gr; press = true; }
+                    break;
+                }
+            }else{ press = false; }
 
             if (al_key_down(&state, ALLEGRO_KEY_S)) {
-                p.mode = 's';
+                switch (lvl) {
+                case 1:
+                    level1.mode = 's';
+				case 2:
+					level2.mode = 's';
+                }
             }
             if (al_key_down(&state, ALLEGRO_KEY_C)) {
-                p.mode = 'c';
+				switch (lvl) {
+				case 1:
+					level1.mode = 'c';
+				case 2:
+					level2.mode = 'c';
+				}
             }
-
+			if (al_key_down(&state, ALLEGRO_KEY_B)) {
+				switch (lvl) {
+				case 1:
+					level1.mode = 'b';
+				case 2:
+					level2.mode = 'b';
+				}
+			}
             if (al_key_down(&state, ALLEGRO_KEY_F)) {
                 p.flip_gr = true;
             }
@@ -436,29 +599,7 @@ class GameEngine:public Engine{
             p.sync();
             p.paccelerate();
             p.pmove();
-            if (p.hit_box.y+p.hit_box.sy>=ground.y){
-                p.y = ground.y-p.hit_box.sy;
-                p.vy = 0;
-                on_ground = true;
-            }
-            if (lvl == 1){
-                level1.move();
-                if(level1.collision(p)){
-                    reset_all();
-                }
-            }
-            if (lvl == 2){
-                level2.move();
-                if(level2.collision(p)){
-                    reset_all();
-                }
-            }
-            
-            if (p.mode == 'c'){
-                if ((al_key_down(&state, ALLEGRO_KEY_UP) || al_key_down(&state, ALLEGRO_KEY_SPACE)) & on_ground) {
-                    p.vy = -410;
-                }
-            }
+
             frame++;
         }
 
@@ -480,7 +621,7 @@ class GameEngine:public Engine{
                 al_map_rgb(255, 255, 255),
                 150, 50,
                 ALLEGRO_ALIGN_LEFT,
-                "Geografy Jump -alpha-"
+                "Geography Jump -alpha-"
             );
             l1.brend();
             l2.brend();
@@ -493,13 +634,35 @@ class GameEngine:public Engine{
                     0           // flags (just use zero)
                 );
             }
-            if(p.mode=='c'){
+
+            switch (p.mode) {
+            case 'c':
                 mod = "mode: cube";
-            }else{if(p.mode=='s'){
+                break;
+            case 's':
                 mod = "mode: ship";
-            }
+                break;
+			case 'b':
+				mod = "mode: saw";
+				break;
+			case 'u':
+				mod = "mode: UFO";
+				break;
+			case 'w':
+				mod = "mode: wave";
+				break;
+			case 'r':
+				mod = "mode: robot";
+				break;
+			case 'p':
+				mod = "mode: spider";
+				break;
+			case 'g':
+				mod = "mode: swing";
+				break;
 
             }
+
             al_clear_to_color(al_map_rgb(0, 0, 0));
             al_draw_text(
                 font,
