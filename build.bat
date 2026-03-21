@@ -1,0 +1,11 @@
+g++ src/MyGame.cpp src/engine.cpp ^
+-o build/windows/program ^
+-std=c++17 ^
+-Iallegro/include ^
+-Lallegro/lib ^
+-lallegro ^
+-lallegro_main ^
+-lallegro_primitives ^
+-lallegro_image ^
+-lallegro_font ^
+-lallegro_ttf
