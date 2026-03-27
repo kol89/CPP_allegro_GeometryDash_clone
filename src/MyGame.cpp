@@ -6,9 +6,10 @@
 #include <string>
 #include <vector>
 #include <cmath>
+#include <algorithm>
 #include <vector>
 #include <charconv>
-const double Pi = 3.14;
+const double Pi = 3.14159265359;
 ALLEGRO_FONT* font = nullptr;
 int attempts = 0;
 int frame = 0;
@@ -101,10 +102,117 @@ class rectangle : public shape{
         }
 };
 
+class rotateble_rectangle : public shape{
+    public:
+        double grad;
+        double x1,y1,x2,y2,x3,y3;
+        rotateble_rectangle(double _x, double _y, double _vx, double _vy, double _sx, double _sy, double _ax, double _ay, double _grad, colour _c){
+            grad = _grad;
+            x = _x;
+            y = _y;
+
+            // x1 = _x;
+            // y1 = _sy+_y;
+
+            // x2 = _sx+_x;
+            // y2 = _y;
+
+            // x3 = _sx+_x;
+            // y3 = _sy+_y;
+
+            x1 = _sx+_x;
+            y1 = _y;
+
+            x2 = _sx+_x;
+            y2 = _sy+_y;
+
+            x3 = _x;
+            y3 = _sy+_y;
+
+            StartX = _x;
+            StartY = _y;
+            vx = _vx;
+            vy = _vy;
+            ax = _ax;
+            ay = _ay;
+            c = _c;
+        }
+        rotateble_rectangle(){
+            x = 0;
+            y = 0;
+            StartX = 0;
+            StartY = 0;
+            vx = 0;
+            vy = 0;
+            x1 = 0;
+            y1 = 0;
+
+            x2 = 0;
+            y2 = 0;
+
+            x3 = 0;
+            y3 = 0;
+            ax = 0;
+            ay = 0;
+            c = colour();
+        }
+        void move(){
+            x += vx/60;
+            y += vy/60;
+        }
+        void accelerate(){
+            vx += ax/60;
+            vy += ay/60;
+        }
+        void rend(){
+            //al_draw_filled_rectangle(x, y, x + sx, y + sy, al_map_rgb(c.r, c.g, c.b));
+            float verts[] = {
+                x,      y,
+                x1,   y1,
+                x2,   y2,
+                x3,      y3
+            };
+            al_draw_polygon(verts, 4, ALLEGRO_LINE_JOIN_ROUND, al_map_rgb(c.r, c.g, c.b), 1.0, 0.0);
+        }
+        void reset(){
+            x = StartX;
+            y = StartY;
+        }
+
+        void rotate() {
+            double theta = grad * (Pi / 180);
+            double sinus = std::sin(theta);
+            double cosinus = std::cos(theta);
+            double centerX = (x + x2) / 2;
+            double centerY = (y + y2) / 2;
+            double dx, dy;
+
+            dx = x - centerX; dy = y - centerY;
+            x = centerX + dx * cosinus - dy * sinus;
+            y = centerY + dx * sinus   + dy * cosinus;
+
+            dx = x1 - centerX; dy = y1 - centerY;
+            x1 = centerX + dx * cosinus - dy * sinus;
+            y1 = centerY + dx * sinus   + dy * cosinus;
+
+            dx = x2 - centerX; dy = y2 - centerY;
+            x2 = centerX + dx * cosinus - dy * sinus;
+            y2 = centerY + dx * sinus   + dy * cosinus;
+
+            dx = x3 - centerX; dy = y3 - centerY;
+            x3 = centerX + dx * cosinus - dy * sinus;
+            y3 = centerY + dx * sinus   + dy * cosinus;
+        }
+};
+
+
+
 class player: public rectangle{
     public:
+        double grad;
         char mode;
         bool flip_gr;
+        rotateble_rectangle skin;
         rectangle collision_box;
         rectangle hit_box;
 		void chsp(int s) {
@@ -120,6 +228,7 @@ class player: public rectangle{
 		}
         player(double _x,double _y,char _mode, int _speed){
             mode=_mode;
+            grad = 0;
             flip_gr = false;
             x= _x;
             y= _y;
@@ -134,9 +243,13 @@ class player: public rectangle{
             ay = 0;
             c = colour(0,0,0,255);
             hit_box = rectangle(x,y,vx,vy,sx,sy,ax,ay,colour(255,0,0,0));
+            skin = rotateble_rectangle(x,y,vx,vy,sx,sy,ax,ay,grad,colour(255,255,255,0));
             collision_box = rectangle(x+(sx/3),y+(sy/3),vx,vy,sx/3,sy/3,ax,ay,colour(0,0,255,0));
         }
         void sync() {
+            double grad = skin.grad;
+            skin = rotateble_rectangle(x,y,vx,vy,sx,sy,ax,ay,grad, colour(255,255,255,0));
+            skin.rotate();
             hit_box = rectangle(x,y,vx,vy,sx,sy,ax,ay,colour(255,0,0,0));
             collision_box = rectangle(x+(sx/3),y+(sy/3),vx,vy,sx/3,sy/3,ax,ay,colour(0,0,255,0));
         }
@@ -595,8 +708,14 @@ class GameEngine:public Engine{
             if (al_key_down(&state, ALLEGRO_KEY_R)) {
                 reset_all();
             }
-
             p.sync();
+            if (!on_ground){
+                p.skin.grad+=20;
+            }
+            if(on_ground){
+                p.skin.grad=0;
+            }
+            p.skin.rotate();
             p.paccelerate();
             p.pmove();
 
@@ -690,8 +809,9 @@ class GameEngine:public Engine{
                          ALLEGRO_ALIGN_LEFT,
                          std::to_string(attempts).c_str()
             );
-            p.hit_box.rend();
-            p.collision_box.rend();
+            p.skin.rend();
+            //p.hit_box.rend();
+            //p.collision_box.rend();
             ground.rend();
             if (lvl == 1){
                 level1.render();
