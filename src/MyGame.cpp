@@ -1,5 +1,7 @@
 #include "engine.hpp"
 #include <allegro5/allegro_primitives.h>
+#include <allegro5/allegro_image.h>
+#include <allegro5/allegro.h>
 #include <cstddef>
 #include <stdlib.h>
 #include <iostream>
@@ -10,7 +12,8 @@
 #include <vector>
 #include <charconv>
 ALLEGRO_KEYBOARD_STATE state;
-const float FPS = 60;
+const float local_game_speed = 1;
+const double fps = 240/local_game_speed;
 const float WIDTH = 640;
 const float HEIGHT = 360;
 const double Pi = 3.14159265359;
@@ -18,6 +21,7 @@ const double g = 1500;
 const double jumpSpeed = -600;
 const double flightAcceleration = -700;
 ALLEGRO_FONT* font = nullptr;
+ALLEGRO_BITMAP* texture = nullptr;
 int attempts = 0;
 int frame = 0;
 int stat = 0;
@@ -90,12 +94,12 @@ public:
         c = colour();
     }
     void move() {
-        x += vx / 60;
-        y += vy / 60;
+        x += vx / fps;
+        y += vy / fps;
     }
     void accelerate() {
-        vx += ax / 60;
-        vy += ay / 60;
+        vx += ax / fps;
+        vy += ay / fps;
     }
     void rend() {
         al_draw_filled_rectangle(x, y, x + sx, y + sy, al_map_rgb(c.r, c.g, c.b));
@@ -164,12 +168,12 @@ public:
         c = colour();
     }
     void move() {
-        x += vx / 60;
-        y += vy / 60;
+        x += vx / fps;
+        y += vy / fps;
     }
     void accelerate() {
-        vx += ax / 60;
-        vy += ay / 60;
+        vx += ax / fps;
+        vy += ay / fps;
     }
     void rend() {
         //al_draw_filled_rectangle(x, y, x + sx, y + sy, al_map_rgb(c.r, c.g, c.b));
@@ -179,7 +183,22 @@ public:
             x2,   y2,
             x3,      y3
         };
+        if (texture == nullptr) {
+            al_init_image_addon();
+            texture = al_load_bitmap("src/skin.png");
+        }
+        float tw = al_get_bitmap_width(texture);
+        float th = al_get_bitmap_height(texture);
+        ALLEGRO_VERTEX quad[] = {
+            {.x = x, .y = y, .z = 0, .u = 0,  .v = 0,  .color = al_map_rgb(255,255,255) }, // top-left
+            {.x = x1, .y = y1, .z = 0, .u = tw, .v = 0,  .color = al_map_rgb(255,255,255) }, // top-right
+            {.x = x2, .y = y2, .z = 0, .u = tw, .v = th, .color = al_map_rgb(255,255,255) }, // bottom-right
+            {.x = x3, .y = y3, .z = 0, .u = 0,  .v = th, .color = al_map_rgb(255,255,255) }, // bottom-left
+        };
+        int indices[] = { 0, 1, 2,  0, 2, 3 };
+        al_draw_indexed_prim(quad, NULL, texture, indices, 6, ALLEGRO_PRIM_TRIANGLE_LIST);
         al_draw_polygon(verts, 4, ALLEGRO_LINE_JOIN_ROUND, al_map_rgb(c.r, c.g, c.b), 1.0, 0.0);
+
     }
     void reset() {
         x = StartX;
@@ -300,26 +319,64 @@ public:
         y = ground.y - _y * 50;
         StartX = x;
         StartY = y;
-        c = colour(0, 100, 100, 0);
+        switch (_type) {
+        case 'p':
+            c = colour(252, 103, 252, 0);
+            break;
+        case 'y':
+            c = colour(255, 254, 108, 0);
+            break;
+        case 'r':
+            c = colour(255, 97, 40, 0);
+            break;
+        case 'b':
+            c = colour(116, 254, 254, 0);
+            break;
+        case 'g':
+            c = colour(104, 254, 105, 0);
+            break;
+        case 'k':
+            c = colour(50, 50, 50, 0);
+            break;
+        default:
+            c = colour(0, 100, 100, 0);
+        }
+        
     }
 };
 
 class pad : public rectangle {
 public:
     char type;
+    bool activated = false;
     pad(double _x, double _y, char _type) {
         ax = 0;
         ay = 0;
         vx = 0;
         vy = 0;
         sx = 50;
-        sy = 10;
+        sy = 5;
         type = _type;
-        x = _x * 50;
-        y = ground.y - _y * 50- 400;
+        x = _x * 55;
+        y = ground.y - _y * 50+ 45;
         StartX = x;
         StartY = y;
-        c = colour(0, 100, 100, 0);
+        switch (_type) {
+        case 'p':
+            c = colour(252, 103, 252, 0);
+            break;
+        case 'y':
+            c = colour(255, 254, 108, 0);
+            break;
+        case 'r':
+            c = colour(255, 97, 40, 0);
+            break;
+        case 'b':
+            c = colour(116, 254, 254, 0);
+            break;
+        default:
+            c = colour(0, 100, 100, 0);
+        }
     }
 };
 
@@ -410,7 +467,7 @@ public:
         }
     }
     void move(double sp) {
-        double s = sp / 60;
+        double s = sp / fps;
             if (danger.empty() == 0) {
                 for (int i = 0; i < danger.size(); i++) {
                     danger[i].x = danger[i].x - s;
@@ -491,14 +548,14 @@ public:
         collision_box = rectangle(x + (sx / 3), y + (sy / 3), vx, vy, sx / 3, sy / 3, ax, ay, colour(0, 0, 255, 0));
     }
     void pmove() {
-        x += vx / 60;
-        y += vy / 60;
+        x += vx / fps;
+        y += vy / fps;
         sync();
     }
     void paccelerate() {
-        vx += ax / 60;
-        if (flip_gr) { vy -= ay / 60; }
-        else { vy += ay / 60; }
+        vx += ax / fps;
+        if (flip_gr) { vy -= ay / fps; }
+        else { vy += ay / fps; }
         sync();
     }
     bool collision(level l) {
@@ -559,7 +616,7 @@ public:
                         case 'p':
                             std::cout << "PINK";
                             if (!press) {
-                                vy = jumpSpeed / 2; press = true;
+                                vy = jumpSpeed / 1.5; press = true;
                             }
                             break;
                         case 'y':
@@ -569,12 +626,36 @@ public:
                             break;
                         case 'r':
                             if (!press) {
-                                vy = jumpSpeed * 2; press = true;
+                                vy = jumpSpeed * 1.5; press = true;
                             }
                             break;
                         case 'b':
+                            if (flip_gr) {
+                                if (!press) {
+                                    flip_gr = !flip_gr; vy = -jumpSpeed/2; press = true;
+                                }
+                            }
+                            else {
+                                if (!press) {
+                                    flip_gr = !flip_gr; vy = jumpSpeed/2; press = true;
+                                }
+                            }
+                            break;
+                        case 'g':
+                            if (flip_gr) {
+                                if (!press) {
+                                    flip_gr = !flip_gr; vy = jumpSpeed; press = true;
+                                }
+                            }
+                            else {
+                                if (!press) {
+                                    flip_gr = !flip_gr; vy = -jumpSpeed; press = true;
+                                }
+                            }
+                            break;
+                        case 'k':
                             if (!press) {
-                                flip_gr = !flip_gr; press = true;
+                                vy -= jumpSpeed; press = true;
                             }
                             break;
                         default:
@@ -589,27 +670,31 @@ public:
         if (l.pads.empty() == 0) {
             for (int i = 0; i < l.pads.size(); i++) {
                 if (hit_box.chkcol(l.pads[i])) {
-                    switch (l.orbs[i].type) {
-                    case 'p':
-                        if (!press) {
-                            vy = jumpSpeed / 2;
+                        if (l.pads[i].activated==false) {
+                            switch (l.pads[i].type) {
+                            case 'p':
+                                vy = jumpSpeed / 1.5;
+                                l.pads[i].activated = true;
+                                break;
+                            case 'y':
+                                vy = jumpSpeed * 1.2;
+                                l.pads[i].activated = true;
+                                break;
+                            case 'r':
+                                vy = jumpSpeed * 1.5;
+                                l.pads[i].activated = true;
+                                break;
+                            case 'b':
+                                flip_gr = true;
+                                vy = jumpSpeed / 2;
+                                //std::cout << l.pads[i].activated<<"---------";
+                                l.pads[i].activated = true;
+                                break;
+                            default:
+                                l.pads[i].activated = true;
+                            }
                         }
-                        break;
-                    case 'y':
-                        if (!press) {
-                            vy = jumpSpeed;
-                        }
-                        break;
-                    case 'r':
-                        if (!press) {
-                            vy = jumpSpeed * 2;
-                        }
-                        break;
-                    case 'b':
-                        if (!press) {
-                            flip_gr = !flip_gr;
-                        }
-                    }
+                    
                 }
             }
         }
@@ -643,8 +728,8 @@ std::vector<orb> orbs;
     y - yelow    DONE
     r - red      DONE
     b - blue     DONE
-    g - green    WIP
-    k - black    WIP
+    g - green    DONE
+    k - black    DONE
     d - dash     WIP
 */
 std::vector<pad> pads;
@@ -721,9 +806,21 @@ level level2(
     portals = {},
     speed = {},
     orbs = {
-    orb(13, 3, 'p')
+    orb(13, 3, 'g'),
+    orb(18, 5, 'g'),
+    orb(30, 2.5, 'y'),
+    orb(40, 2.5, 'p'),
+    orb(50, 2.5, 'r'),
+    orb(65, 2.5, 'k'),
+    orb(75, 2.5, 'b'),
+    orb(77, 5, 'b')
     },
-    pads = {},
+    pads = {
+        pad(85,1,'p'),
+        pad(90,1,'y'),
+        pad(100,1,'r'),
+        pad(110,1,'b'),
+    },
     1000,
     'c',
     1
@@ -810,7 +907,7 @@ class GameEngine :public Engine {
                 p.mode = level1.mode;
                 p.chsp(level1.sp);
                 if (p.x > 150) {
-                    p.x = p.x - p.vx / 60;
+                    p.x = p.x - p.vx / fps;
                     level1.move(p.vx);
                 }
                 if (p.collision(level1)) {
@@ -822,7 +919,7 @@ class GameEngine :public Engine {
                 p.mode = level2.mode;
                 p.chsp(level2.sp);
                 if (p.x > 150) {
-                    p.x = p.x - p.vx / 60;
+                    p.x = p.x - p.vx / fps;
                     level2.move(p.vx);
                 }
                 if (p.collision(level2)) {
@@ -882,10 +979,25 @@ class GameEngine :public Engine {
             }
             p.sync();
             if (!on_ground) {
-                p.skin.grad += 3.8;
+                p.skin.grad += 0.95; //3.8
             }
             if (on_ground) {
-                p.skin.grad = 0;
+                if(p.skin.grad>=315 && p.skin.grad<=45) {
+                    p.skin.grad = 0;
+                }
+                if(p.skin.grad>45 && p.skin.grad<=135) {
+                    p.skin.grad = 90;
+                }
+                if(p.skin.grad>135 && p.skin.grad<=225) {
+                    p.skin.grad = 180;
+                }
+                if(p.skin.grad>225 && p.skin.grad<315) {
+                    p.skin.grad = 270;
+                }
+                
+            }
+            if(p.skin.grad>360){
+                p.skin.grad=0;
             }
             p.skin.rotate();
             p.paccelerate();
@@ -901,12 +1013,20 @@ class GameEngine :public Engine {
         if (stat == 0) {
             if (font == nullptr) {
                 font = al_load_ttf_font(
-                    "src/arial.ttf", // font file
+                    "src/pusab.otf", // font file
                     32,         // font size
                     0           // flags (just use zero)
                 );
             }
+            if (texture == nullptr) {
+                al_init_image_addon();
+                texture = al_load_bitmap("src/skin.png");
+            }
+            
             al_clear_to_color(al_map_rgb(0, 0, 0));
+            /*if (texture != nullptr) {
+                al_draw_bitmap(texture, 0, 0, 2);
+            }*/
             al_draw_text(
                 font,
                 al_map_rgb(255, 255, 255),
@@ -920,7 +1040,7 @@ class GameEngine :public Engine {
         if (stat == 1) {
             if (font == nullptr) {
                 font = al_load_ttf_font(
-                    "src/arial.ttf", // font file
+                    "src/pusab.otf", // font file
                     16,         // font size
                     0           // flags (just use zero)
                 );
@@ -1000,6 +1120,7 @@ class GameEngine :public Engine {
 
 
 int main() {
+    
     GameEngine game;
     game.start();
     return 0;
