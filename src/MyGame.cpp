@@ -13,11 +13,11 @@
 #include <charconv>
 ALLEGRO_KEYBOARD_STATE state;
 const float local_game_speed = 1;
-const double fps = 240/local_game_speed;
+const double fps = 60/local_game_speed;
 const float WIDTH = 640;
 const float HEIGHT = 360;
 const double Pi = 3.14159265359;
-const double g = 1500;
+double g = 1500;
 const double jumpSpeed = -600;
 const double flightAcceleration = -700;
 ALLEGRO_FONT* font = nullptr;
@@ -51,7 +51,7 @@ struct colour {
 };
 
 class shape/*dot*/ {
-public:
+    public:
     double x; // position x
     double y; // position y
     double StartX; // initial position x
@@ -64,7 +64,7 @@ public:
 };
 
 class rectangle : public shape {
-public:
+    public:
     double sx; // size x
     double sy; // size y
     rectangle(double _x, double _y, double _vx, double _vy, double _sx, double _sy, double _ax, double _ay, colour _c) {
@@ -114,7 +114,7 @@ public:
 };
 
 class rotateble_rectangle : public shape {
-public:
+    public:
     double grad;
     double x1, y1, x2, y2, x3, y3;
     rotateble_rectangle(double _x, double _y, double _vx, double _vy, double _sx, double _sy, double _ax, double _ay, double _grad, colour _c) {
@@ -178,10 +178,10 @@ public:
     void rend() {
         //al_draw_filled_rectangle(x, y, x + sx, y + sy, al_map_rgb(c.r, c.g, c.b));
         float verts[] = {
-            x,      y,
-            x1,   y1,
-            x2,   y2,
-            x3,      y3
+            static_cast<float>(x),      static_cast<float>(y),
+            static_cast<float>(x1),   static_cast<float>(y1),
+            static_cast<float>(x2),   static_cast<float>(y2),
+            static_cast<float>(x3),      static_cast<float>(y3)
         };
         if (texture == nullptr) {
             al_init_image_addon();
@@ -190,10 +190,10 @@ public:
         float tw = al_get_bitmap_width(texture);
         float th = al_get_bitmap_height(texture);
         ALLEGRO_VERTEX quad[] = {
-            {.x = x, .y = y, .z = 0, .u = 0,  .v = 0,  .color = al_map_rgb(255,255,255) }, // top-left
-            {.x = x1, .y = y1, .z = 0, .u = tw, .v = 0,  .color = al_map_rgb(255,255,255) }, // top-right
-            {.x = x2, .y = y2, .z = 0, .u = tw, .v = th, .color = al_map_rgb(255,255,255) }, // bottom-right
-            {.x = x3, .y = y3, .z = 0, .u = 0,  .v = th, .color = al_map_rgb(255,255,255) }, // bottom-left
+            {.x = static_cast<float>(x), .y = static_cast<float>(y), .z = 0, .u = 0,  .v = 0,  .color = al_map_rgb(255,255,255) }, // top-left
+            {.x = static_cast<float>(x1), .y = static_cast<float>(y1), .z = 0, .u = tw, .v = 0,  .color = al_map_rgb(255,255,255) }, // top-right
+            {.x = static_cast<float>(x2), .y = static_cast<float>(y2), .z = 0, .u = tw, .v = th, .color = al_map_rgb(255,255,255) }, // bottom-right
+            {.x = static_cast<float>(x3), .y = static_cast<float>(y3), .z = 0, .u = 0,  .v = th, .color = al_map_rgb(255,255,255) }, // bottom-left
         };
         int indices[] = { 0, 1, 2,  0, 2, 3 };
         al_draw_indexed_prim(quad, NULL, texture, indices, 6, ALLEGRO_PRIM_TRIANGLE_LIST);
@@ -233,7 +233,7 @@ public:
 
 rectangle ground(0, 300, 0, 0, 700, 60, 0, 0, colour(255, 165, 0, 0));
 class block : public rectangle {
-public:
+    public:
     block(double _x, double _y) {
         ax = 0;
         ay = 0;
@@ -250,7 +250,7 @@ public:
 };
 
 class spike : public rectangle {
-public:
+    public:
     spike(double _x, double _y) {
         ax = 0;
         ay = 0;
@@ -267,7 +267,7 @@ public:
 };
 
 class portal : public rectangle {
-public:
+    public:
     char mode;
     portal(double _x, double _y, char _mode) {
         ax = 0;
@@ -286,7 +286,7 @@ public:
 };
 
 class speed_portal : public rectangle {
-public:
+    public:
     char spd;
     speed_portal(double _x, double _y, char _spd) {
         ax = 0;
@@ -305,7 +305,7 @@ public:
 };
 
 class orb : public rectangle {
-public:
+    public:
     char type;
     orb(double _x, double _y, char _type) {
         ax = 0;
@@ -346,7 +346,7 @@ public:
 };
 
 class pad : public rectangle {
-public:
+    public:
     char type;
     bool activated = false;
     pad(double _x, double _y, char _type) {
@@ -381,7 +381,7 @@ public:
 };
 
 class button : public rectangle {
-public:
+ public:
     char const* text;
     bool is_pressed() {
         ALLEGRO_MOUSE_STATE state;
@@ -413,7 +413,7 @@ public:
 };
 
 class level {
-public:
+    public:
     std::vector<spike> danger;
     std::vector<block> colidable;
     std::vector<portal> portals;
@@ -502,7 +502,7 @@ public:
 };
 
 class player : public rectangle {
-public:
+    public:
     double grad;
     char mode;
     bool flip_gr;
@@ -705,7 +705,6 @@ public:
 player p = player(0, 300, 'c', 1);
 
 
-
 std::vector<spike> danger;
 std::vector<block> colidable;
 std::vector<portal> portals;
@@ -714,7 +713,7 @@ std::vector<portal> portals;
     c - cube    DONE
     s - ship    DONE
     b - saw     DONE
-    u - UFO     WIP
+    u - UFO     DONE      
     w - wave    WIP
     r - robot   WIP
     p - spider  WIP
@@ -940,9 +939,22 @@ class GameEngine :public Engine {
                 case 'b':
                     if (on_ground && !press) { p.flip_gr = !p.flip_gr; press = true; }
                     break;
+                case 'u':
+                    if (!press) { p.vy = jumpSpeed; press = true; }
+                    break;
+                case 'w':
+                    g = 0;
+                    p.vy = jumpSpeed;
+                    break;
                 }
-            }
+            } 
             else { press = false; }
+            if (p.mode == 'w' && !(al_key_down(&state, ALLEGRO_KEY_UP) || al_key_down(&state, ALLEGRO_KEY_SPACE))){
+                p.vy = -jumpSpeed;
+            }
+            if(!(p.mode!='w')){
+                g=1500;
+            }
 
             if (al_key_down(&state, ALLEGRO_KEY_S)) {
                 switch (lvl) {
@@ -968,6 +980,14 @@ class GameEngine :public Engine {
                     level2.mode = 'b';
                 }
             }
+            if (al_key_down(&state, ALLEGRO_KEY_W)) {
+                switch (lvl) {
+                case 1:
+                    level1.mode = 'w';
+                case 2:
+                    level2.mode = 'w';
+                }
+            }
             if (al_key_down(&state, ALLEGRO_KEY_F)) {
                 p.flip_gr = true;
             }
@@ -979,10 +999,10 @@ class GameEngine :public Engine {
             }
             p.sync();
             if (!on_ground) {
-                p.skin.grad += 0.95; //3.8
+                p.skin.grad += 3.9; //3.8
             }
             if (on_ground) {
-                if(p.skin.grad>=315 && p.skin.grad<=45) {
+                if(p.skin.grad>=315 && p.skin.grad<=360 || p.skin.grad<=45) {
                     p.skin.grad = 0;
                 }
                 if(p.skin.grad>45 && p.skin.grad<=135) {
@@ -994,9 +1014,9 @@ class GameEngine :public Engine {
                 if(p.skin.grad>225 && p.skin.grad<315) {
                     p.skin.grad = 270;
                 }
-                
             }
-            if(p.skin.grad>360){
+            std::cout<<p.skin.grad<<std::endl;
+            if(p.skin.grad>=360){
                 p.skin.grad=0;
             }
             p.skin.rotate();
