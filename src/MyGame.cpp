@@ -2,6 +2,7 @@
 #include <allegro5/allegro_primitives.h>
 #include <allegro5/allegro_image.h>
 #include <allegro5/allegro.h>
+#include <allegro5/bitmap_draw.h>
 #include <cstddef>
 #include <stdlib.h>
 #include <iostream>
@@ -12,16 +13,19 @@
 #include <vector>
 #include <charconv>
 ALLEGRO_KEYBOARD_STATE state;
-const float local_game_speed = 1;
+const float local_game_speed = 1.4;
 const double fps = 60/local_game_speed;
-const float WIDTH = 640;
-const float HEIGHT = 360;
+const double grid_size = 30;
+const float WIDTH = 1280;
+const float HEIGHT = 720;
 const double Pi = 3.14159265359;
 double g = 1500;
 const double jumpSpeed = -600;
-const double flightAcceleration = -700;
+const double flightAcceleration = -g/1.8;
 ALLEGRO_FONT* font = nullptr;
-ALLEGRO_BITMAP* texture = nullptr;
+ALLEGRO_BITMAP* skin_texture = nullptr;
+ALLEGRO_BITMAP* spike_texture = nullptr;
+ALLEGRO_BITMAP* block_texture = nullptr;
 int attempts = 0;
 int frame = 0;
 int stat = 0;
@@ -183,12 +187,12 @@ class rotateble_rectangle : public shape {
             static_cast<float>(x2),   static_cast<float>(y2),
             static_cast<float>(x3),      static_cast<float>(y3)
         };
-        if (texture == nullptr) {
+        if (skin_texture == nullptr) {
             al_init_image_addon();
-            texture = al_load_bitmap("src/skin.png");
+            skin_texture = al_load_bitmap("src/skin.png");
         }
-        float tw = al_get_bitmap_width(texture);
-        float th = al_get_bitmap_height(texture);
+        float tw = al_get_bitmap_width(skin_texture);
+        float th = al_get_bitmap_height(skin_texture);
         ALLEGRO_VERTEX quad[] = {
             {.x = static_cast<float>(x), .y = static_cast<float>(y), .z = 0, .u = 0,  .v = 0,  .color = al_map_rgb(255,255,255) }, // top-left
             {.x = static_cast<float>(x1), .y = static_cast<float>(y1), .z = 0, .u = tw, .v = 0,  .color = al_map_rgb(255,255,255) }, // top-right
@@ -196,8 +200,8 @@ class rotateble_rectangle : public shape {
             {.x = static_cast<float>(x3), .y = static_cast<float>(y3), .z = 0, .u = 0,  .v = th, .color = al_map_rgb(255,255,255) }, // bottom-left
         };
         int indices[] = { 0, 1, 2,  0, 2, 3 };
-        al_draw_indexed_prim(quad, NULL, texture, indices, 6, ALLEGRO_PRIM_TRIANGLE_LIST);
-        al_draw_polygon(verts, 4, ALLEGRO_LINE_JOIN_ROUND, al_map_rgb(c.r, c.g, c.b), 1.0, 0.0);
+        al_draw_indexed_prim(quad, NULL, skin_texture, indices, 6, ALLEGRO_PRIM_TRIANGLE_LIST);
+        //al_draw_polygon(verts, 4, ALLEGRO_LINE_JOIN_ROUND, al_map_rgb(c.r, c.g, c.b), 1.0, 0.0);
 
     }
     void reset() {
@@ -231,7 +235,7 @@ class rotateble_rectangle : public shape {
     }
 };
 
-rectangle ground(0, 300, 0, 0, 700, 60, 0, 0, colour(255, 165, 0, 0));
+rectangle ground(0, 300, 0, 0, 700, 60, 0, 0, colour(0, 102, 255, 0));
 class block : public rectangle {
     public:
     block(double _x, double _y) {
@@ -382,6 +386,7 @@ class pad : public rectangle {
 
 class button : public rectangle {
  public:
+    bool pressed = false; 
     char const* text;
     bool is_pressed() {
         ALLEGRO_MOUSE_STATE state;
@@ -405,8 +410,8 @@ class button : public rectangle {
         al_draw_text(
             font,
             al_map_rgb(0, 0, 0),
-            (x + sx / 2) - 45, (y + sy / 2) - 20,
-            ALLEGRO_ALIGN_LEFT,
+            (x + sx / 2), (y + sy / 2)-20,
+            ALLEGRO_ALIGN_CENTER,
             text
         );
     }
@@ -436,13 +441,31 @@ class level {
     }
     void render() {
         if (danger.empty() == 0) {
+            if (spike_texture == nullptr) {
+                al_init_image_addon();
+                spike_texture = al_load_bitmap("src/spike.png");
+            }
             for (int i = 0; i < danger.size(); i++) {
-                danger[i].rend();
+                if(danger[i].x<=WIDTH && danger[i].x+danger[i].sx>=0){
+                    double tx = danger[i].x-20;
+                    double ty = danger[i].y-14.29;
+                    al_draw_bitmap(spike_texture, tx, ty, 0);
+                }
+                //danger[i].rend();
             }
         }
         if (colidable.empty() == 0) {
+            if (block_texture == nullptr) {
+                al_init_image_addon();
+                block_texture = al_load_bitmap("src/block.jpg");
+            }
             for (int i = 0; i < colidable.size(); i++) {
-                colidable[i].rend();
+                if(colidable[i].x<=WIDTH && colidable[i].x+colidable[i].sx>=0){
+                double tx = colidable[i].x;
+                double ty = colidable[i].y;
+                al_draw_bitmap(block_texture, tx, ty, 0);
+                }
+                //colidable[i].rend();
             }
         }
         if (portals.empty() == 0) {
@@ -537,7 +560,7 @@ class player : public rectangle {
         ay = 0;
         c = colour(0, 0, 0, 255);
         hit_box = rectangle(x, y, vx, vy, sx, sy, ax, ay, colour(255, 0, 0, 0));
-        skin = rotateble_rectangle(x, y, vx, vy, sx, sy, ax, ay, grad, colour(255, 255, 255, 0));
+        skin = rotateble_rectangle(x, y, vx, vy, sx, sy, ax, ay, grad, colour(0, 0, 0, 0));
         collision_box = rectangle(x + (sx / 3), y + (sy / 3), vx, vy, sx / 3, sy / 3, ax, ay, colour(0, 0, 255, 0));
     }
     void sync() {
@@ -704,7 +727,6 @@ class player : public rectangle {
 };
 player p = player(0, 300, 'c', 1);
 
-
 std::vector<spike> danger;
 std::vector<block> colidable;
 std::vector<portal> portals;
@@ -754,9 +776,44 @@ level level1(
 
     spike(61, 1),
     spike(62, 1),
+    spike(66, 3),
 
+    spike(71, 1),
+    spike(72, 1),
+    spike(73, 1),
+    spike(74, 1),
     spike(75, 1),
     spike(76, 1),
+    spike(77, 1),
+    spike(78, 1),
+    spike(79, 1),
+
+
+    spike(84, 1),
+    spike(85, 1),
+    spike(86, 1),
+    spike(87, 1),
+    spike(88, 1),
+    spike(89, 1),
+    spike(90, 1),
+    spike(91, 1),
+    spike(92, 1),
+    spike(93, 1),
+    spike(94, 1),
+
+    spike(82, 6),
+    spike(83, 6),
+    spike(84, 6),
+    spike(85, 6),
+    spike(86, 6),
+    spike(87, 6),
+    spike(88, 6),
+    spike(89,6),
+    spike(90, 6),
+    spike(91, 6),
+    spike(92, 6),
+    spike(93, 6),
+    spike(94, 6),
     },
     colidable = {
     block(30, 1),
@@ -779,15 +836,53 @@ level level1(
     block(64, 1),
     block(65, 1),
     block(66, 1),
+
+    block(67, 1),
+    block(68, 1),
+    block(69, 1),
+    block(70, 1),
     block(63, 2),
     block(64, 2),
     block(65, 2),
     block(66, 2),
+    block(67, 2),
+    block(68, 2),
+    block(69, 2),
+    block(70, 2),
+
+    block(74,3),
+    block(78,4),
+    block(100, 1),
+    block(101, 1),
+    block(102, 1),
+    block(103, 1),
+    block(104, 1),
+    block(105, 1),
+    block(106, 1),
+    block(100, 2),
+    block(101, 2),
+    block(102, 2),
+    block(103, 2),
+    block(104, 2),
+    block(105, 2),
+    block(106, 2),
+    block(104, 3),
+    block(105, 3),
+    block(106, 3),
+
+
     },
-    portals = {},
+    portals = {
+        portal(83, 4, 's'),
+        portal(95, 4, 'c')
+    },
     speed = {},
-    orbs = {},
-    pads = {},
+    orbs = {
+        orb(109,2,'y')
+    },
+    pads = {
+        pad(93.2, 3,'p')
+    },
     1000,
     'c',
     1
@@ -851,8 +946,9 @@ void reset_all() {
     attempts++;
 }
 
-button l1(100, 120, 170, 100, "level 1", colour(255, 255, 255, 0));
-button l2(350, 120, 170, 100, "level 2", colour(255, 255, 255, 0));
+button l1(100, 120, 75, 75, "<-", colour(255, 255, 255, 0));
+button l2(490, 120, 75, 75, "->", colour(255, 255, 255, 0));
+button enter(250, 200, 150, 100, "ENTER", colour(255, 255, 255, 0));
 
 
 
@@ -865,15 +961,23 @@ class GameEngine :public Engine {
             if (attempts != 0) {
                 attempts = 0;
             }
-            if (l1.is_pressed()) {
-                font = nullptr;
-                lvl = 1;
-                stat = 1;
+            if (l1.is_pressed() && !l1.pressed) {
+                lvl--;
+                l1.pressed=true;
             }
-            if (l2.is_pressed()) {
-                font = nullptr;
-                lvl = 2;
-                stat = 1;
+            if(!l1.is_pressed()){
+                l1.pressed=false;
+            }
+            if (l2.is_pressed() && !l2.pressed) {
+                lvl++;
+                l2.pressed=true;
+            }
+            if(!l2.is_pressed()){
+                l2.pressed=false;
+            }
+            if(enter.is_pressed()){
+                font=nullptr;
+                stat=1;
             }
         }
         if (stat == 1) {
@@ -903,7 +1007,7 @@ class GameEngine :public Engine {
             
             switch (lvl) {
             case 1:
-                p.mode = level1.mode;
+                //p.mode = level1.mode;
                 p.chsp(level1.sp);
                 if (p.x > 150) {
                     p.x = p.x - p.vx / fps;
@@ -926,8 +1030,19 @@ class GameEngine :public Engine {
                 }
                 break;
             }
-            
-
+            //-flight logic-
+            if(p.mode=='s'){
+                g=-flightAcceleration/1.2;
+                if(p.vy>-flightAcceleration/1.2){
+                    p.vy=1500;
+                }
+                if(p.vy<flightAcceleration/1.2){
+                    p.vy=-1500;
+                }
+            }else{
+                g=1500;
+            }
+            //-------
             if (al_key_down(&state, ALLEGRO_KEY_UP) || al_key_down(&state, ALLEGRO_KEY_SPACE)) {
                 switch (p.mode) {
                 case 's':
@@ -998,9 +1113,19 @@ class GameEngine :public Engine {
                 reset_all();
             }
             p.sync();
-            if (!on_ground) {
-                p.skin.grad += 3.9; //3.8
+            switch(p.mode){
+                case 'c':
+                if (!on_ground) {
+                    p.skin.grad += 3.9*local_game_speed; //3.8
+                }
+                break;
+                case 's':
+                if (!on_ground) {
+                    p.skin.grad = p.vy/15; //3.8
+                }
+                break;
             }
+            
             if (on_ground) {
                 if(p.skin.grad>=315 && p.skin.grad<=360 || p.skin.grad<=45) {
                     p.skin.grad = 0;
@@ -1038,14 +1163,14 @@ class GameEngine :public Engine {
                     0           // flags (just use zero)
                 );
             }
-            if (texture == nullptr) {
+            if (skin_texture == nullptr) {
                 al_init_image_addon();
-                texture = al_load_bitmap("src/skin.png");
+                skin_texture = al_load_bitmap("src/skin.png");
             }
             
-            al_clear_to_color(al_map_rgb(0, 0, 0));
-            /*if (texture != nullptr) {
-                al_draw_bitmap(texture, 0, 0, 2);
+            al_clear_to_color(al_map_rgb(40, 125, 255));
+            /*if (skin_texture != nullptr) {
+                al_draw_bitmap(skin_texture, 0, 0, 2);
             }*/
             al_draw_text(
                 font,
@@ -1054,8 +1179,16 @@ class GameEngine :public Engine {
                 ALLEGRO_ALIGN_LEFT,
                 "Geography Jump -alpha-"
             );
+            al_draw_text(
+                font,
+                al_map_rgb(255, 255, 255),
+                295, 120,
+                ALLEGRO_ALIGN_LEFT,
+                std::to_string(lvl).c_str()
+            );
             l1.brend();
             l2.brend();
+            enter.brend();
         }
         if (stat == 1) {
             if (font == nullptr) {
@@ -1094,7 +1227,7 @@ class GameEngine :public Engine {
 
             }
 
-            al_clear_to_color(al_map_rgb(0, 0, 0));
+            al_clear_to_color(al_map_rgb(40, 125, 255));
             al_draw_text(
                 font,
                 al_map_rgb(255, 255, 255),
@@ -1140,7 +1273,6 @@ class GameEngine :public Engine {
 
 
 int main() {
-    
     GameEngine game;
     game.start();
     return 0;
