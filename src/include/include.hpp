@@ -1,0 +1,36 @@
+#ifndef INCLUDE_H
+#define INCLUDE_H
+
+#include "colour.hpp"
+#include "shape.hpp"
+#include "rectangle.hpp"
+#include "rotateble_rectangle.hpp"
+#include "level.hpp"
+#include "block.hpp"
+#include "spike.hpp"
+#include "portal.hpp"
+#include "speed_portal.hpp"
+#include "orb.hpp"
+#include "pad.hpp"
+#include "button.hpp"
+#include "player.hpp"
+#include "gvar.hpp"
+#include "load_lvl.hpp"
+#include "json11.hpp"
+#include <allegro5/allegro_primitives.h>
+#include <allegro5/allegro_image.h>
+#include <allegro5/allegro.h>
+#include <allegro5/bitmap_draw.h>
+#include <allegro5/allegro_font.h>
+#include <cstddef>
+#include <stdlib.h>
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <vector>
+#include <cmath>
+#include <algorithm>
+#include <vector>
+#include <sstream>
+#include <charconv>
+#endif

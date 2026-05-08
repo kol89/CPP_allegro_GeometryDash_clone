@@ -1,0 +1,1 @@
+. "/home/aleksandrs/Documents/PROGRAMING/C++/CPP_allegro_GeometryDash_clone-main/conanbuildenv-release-x86_64.sh"
