@@ -419,6 +419,7 @@ class GameEngine :public Engine {
             p.skin.y3+=grid_size;
             p.skin.y2+=grid_size;
             p.skin.y+=grid_size;
+            
             if (al_key_down(&state, ALLEGRO_KEY_S)) {
                 p.skin.x+=grid_size;
                 p.skin.x3+=grid_size;

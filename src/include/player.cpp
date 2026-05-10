@@ -1,3 +1,4 @@
+#include "gvar.hpp"
 #include "include.hpp"
 
 void player::chsp(int s) {
@@ -35,7 +36,12 @@ player::player(double _x, double _y, char _mode, int _speed) {
 
 void player::sync() {
         double grad = skin.grad;
-        skin = rotateble_rectangle(x, y, vx, vy, sx, sy, ax, ay, grad, colour(255, 255, 255, 0));
+        if (player_sk=="src/img/shipskin.png"){
+            skin = rotateble_rectangle(x-(grid_size/2), y-(grid_size/2), vx, vy, sx+(grid_size/2), sy+(grid_size/2), ax, ay, grad, colour(255, 255, 255, 0));
+            std::cout<<player_sk;
+        }else{
+            skin = rotateble_rectangle(x, y, vx, vy, sx, sy, ax, ay, grad, colour(255, 255, 255, 0));
+        }
         skin.rotate();
         hit_box = rectangle(x, y, vx, vy, sx, sy, ax, ay, colour(255, 0, 0, 0));
         collision_box = rectangle(x + (sx / 3), y + (sy / 3), vx, vy, sx / 3, sy / 3, ax, ay, colour(0, 0, 255, 0));

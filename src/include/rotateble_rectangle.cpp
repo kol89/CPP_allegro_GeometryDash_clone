@@ -64,7 +64,7 @@ void rotateble_rectangle::rend() {
         };
         if (skin_texture == nullptr) {
             al_init_image_addon();
-            skin_texture = al_load_bitmap(player_sk);
+            skin_texture = al_load_bitmap(player_sk.c_str());
         }
         
         float tw = al_get_bitmap_width(skin_texture);
