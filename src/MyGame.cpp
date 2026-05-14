@@ -16,8 +16,8 @@ class sblock : public block{
             shifty = _shifty;
         }
         void shift(){
-            x-=shiftx*grid_size;
-            y-=shifty*grid_size;
+            x+=shiftx; //*grid_size
+            y-=shifty;
         }
         void ren() {
             al_draw_filled_rectangle(x+visshx, y+visshy, x + sx+visshx, y + sy+visshy, al_map_rgb(c.r, c.g, c.b));
@@ -511,7 +511,12 @@ class GameEngine :public Engine {
             if (al_key_down(&state, ALLEGRO_KEY_ESCAPE)) {
                 for (int i =0; i<col.size(); i++){
                     col[i].shift();
+                    std::cout<<col[i].x/grid_size<<" || "<<col[i].y/grid_size<<std::endl;
                     ulevel.colidable.push_back(block(col[i].x/grid_size,col[i].y/grid_size));
+                    //std::cout<<"====>"<<ulevel.colidable[i].x/grid_size<<" || "<<ulevel.colidable[i].y/grid_size<<std::endl;
+                }
+                for (auto&& e : ulevel.colidable){
+                    //std::cout<<"====>"<<e.x/grid_size<<" || "<<e.y/grid_size<<std::endl;
                 }
                 std::cout<<"-----------------------"<<ulevel.colidable.size()<<std::endl;
                 ground.y=gr;
@@ -542,8 +547,8 @@ class GameEngine :public Engine {
             pointer_gy=((ulevel.level_shifty+pointer_shifty+ground.y-statem.y)/grid_size);
             mx = statem.x;
             my = statem.y;
-            ulevel.colidable[0].x=ulevel.colidable[0].StartX+pointer_gx*grid_size;
-            ulevel.colidable[0].y=ulevel.colidable[0].StartY-pointer_gy*grid_size;
+            // ulevel.colidable[0].x=ulevel.colidable[0].StartX+pointer_gx*grid_size;
+            // ulevel.colidable[0].y=ulevel.colidable[0].StartY-pointer_gy*grid_size;
             std::cout <<"pointer_gx: "<< pointer_gx << " " <<"pointer_gy: "<< pointer_gy << std::endl;
             std::cout <<"pointer_shiftx: "<< pointer_shiftx << " " <<"pointer_shifty: "<< pointer_shifty << std::endl;
             std::cout <<"level_shiftx: "<< ulevel.level_shiftx << " " <<"level_shifty: "<< ulevel.level_shifty << std::endl;
